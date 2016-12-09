@@ -421,6 +421,8 @@ fi
 
 sleep 5
 
+cd /tmp/hd1/test/http/interactive
+./interactive.sh
 
 ### List the processes after startup
 log "Processes after startup :"
