@@ -306,16 +306,19 @@ led -yoff -bon
 
 sync
 
+
 ### Launch FTP server
 log "Start ftp server..."
-if [[ $(get_config DEBUG) == "yes" ]] ; then
-    tcpsvd -vE 0.0.0.0 21 ftpd -w / > /${LOG_DIR}/log_ftp.txt 2>&1 &
-else
-    tcpsvd -vE 0.0.0.0 21 ftpd -w / &
+if [[ $(get_config FTP) == "yes" ]] ; then
+  if [[ $(get_config DEBUG) == "yes" ]] ; then
+      tcpsvd -vE 0.0.0.0 21 ftpd -w / > /${LOG_DIR}/log_ftp.txt 2>&1 &
+  else
+      tcpsvd -vE 0.0.0.0 21 ftpd -w / &
+  fi
+  sleep 1
+  log "Check for ftp process : "
+  ps | grep tcpsvd | grep -v grep >> ${LOG_FILE}
 fi
-sleep 1
-log "Check for ftp process : "
-ps | grep tcpsvd | grep -v grep >> ${LOG_FILE}
 
 
 ### Launch web server
@@ -332,22 +335,25 @@ mount -o bind /home/hd1/record/ /home/hd1/test/http/record/
 touch /home/hd1/test/http/motion
 
 # start the server
-log "Start http server : server${HTTP_VERSION}..."
-if [[ $(get_config DEBUG) == "yes" ]] ; then
-    ./server${HTTP_VERSION} 80  > /${LOG_DIR}/log_http.txt 2>&1 &
-else
-    ./server${HTTP_VERSION} 80 &
+if [[ $(get_config HTTP) == "yes" ]] ; then
+  log "Start http server : server${HTTP_VERSION}..."
+  if [[ $(get_config DEBUG) == "yes" ]] ; then
+      ./server${HTTP_VERSION} 80  > /${LOG_DIR}/log_http.txt 2>&1 &
+  else
+      ./server${HTTP_VERSION} 80 &
+  fi
+  sleep 1
+  log "Check for http server process : "
+  ps | grep server | grep -v grep | grep -v log_server >> ${LOG_FILE}
 fi
-sleep 1
-log "Check for http server process : "
-ps | grep server | grep -v grep | grep -v log_server >> ${LOG_FILE}
-
 sync
 
 ### Launch record event
 cd /home
-./record_event &
-./mp4record 60 &
+if [[ $(get_config RECORD) == "yes" ]] ; then
+  ./record_event &
+  ./mp4record 60 &
+fi
 
 ### Some configuration
 
@@ -401,15 +407,17 @@ cd /home
 
 ### Rtsp server
 cd /home/hd1/test/
-log "Start rtsp server : rtspsvr${RTSP_VERSION}..."
-if [[ $(get_config DEBUG) == "yes" ]] ; then
-    ./rtspsvr${RTSP_VERSION} > /${LOG_DIR}/log_rtsp.txt 2>&1 &
-else
-    ./rtspsvr${RTSP_VERSION} &
+if [[ $(get_config RTSP) == "yes" ]] ; then
+  log "Start rtsp server : rtspsvr${RTSP_VERSION}..."
+  if [[ $(get_config DEBUG) == "yes" ]] ; then
+      ./rtspsvr${RTSP_VERSION} > /${LOG_DIR}/log_rtsp.txt 2>&1 &
+  else
+      ./rtspsvr${RTSP_VERSION} &
+  fi
+  sleep 1
+  log "Check for rtsp process : "
+  ps | grep rtspsvr | grep -v grep >> ${LOG_FILE}
 fi
-sleep 1
-log "Check for rtsp process : "
-ps | grep rtspsvr | grep -v grep >> ${LOG_FILE}
 
 sleep 5
 
