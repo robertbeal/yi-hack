@@ -278,7 +278,6 @@ if [ 0 -eq $? ]; then
 fi
 
 ### Ping google to see if we have an internet connection
-log "Ping Google.com"
 ping -c3 google.com >> ${LOG_FILE}
 
 ### configure time on a NTP server
