@@ -41,7 +41,6 @@ led() {
     kill $(ps | grep led_ctl | grep -v grep | awk '{print $1}')
     # then process
     /home/led_ctl $@ &
-
 }
 
 LOG_DIR=/home/hd1/test/
@@ -63,8 +62,6 @@ get_config() {
     grep $1 /home/hd1/test/yi-hack.cfg  | cut -d"=" -f2
 }
 
-
-
 ### first we assume that this script is started from /home/init.sh and will replace it from the below lines (which are not commented in init.sh :
 
 #if [ -f "/home/hd1/test/equip_test.sh" ]; then
@@ -82,24 +79,18 @@ telnetd &
 
 
 ### configure timezone
-
 echo "$(get_config TIMEZONE)" > /etc/TZ
-
 ### get time is done after wifi configuration!
 
 
-
-### first, let's do as the orignal script does....
-
+### first, let's do as the original script does....
 export LD_LIBRARY_PATH=/home/libusr:$LD_LIBRARY_PATH
 mv /home/default.script /usr/share/udhcpc -f
-
 rm /etc/resolv.conf
 ln -s /tmp/resolv.conf /etc/resolv.conf
 
 ### TODO : comment this?
 /home/log_server &
-
 
 # some things from the original script...
 cd /home
@@ -118,9 +109,7 @@ himm 0x20050074 0x06802424
 /home/rmm "/home/hd1/voice/wait.g726" 1
 
 ### start blinking blue led for configuration in progress
-#/home/led_ctl -boff -yon &
 led -yoff -bfast
-
 
 insmod /home/mtprealloc7601Usta.ko
 insmod /home/mt7601Usta.ko
@@ -129,14 +118,9 @@ ifconfig ra0 up
 
 ### INFORMATION : the 'clic' 'clic' is done after this line
 
-
 sysctl -w fs.mqueue.msg_max=256
 mkdir /dev/mqueue
 mount -t mqueue none /dev/mqueue
-
-#insmod /home/cpld_wdg.ko
-#insmod /home/cpld_periph.ko
-#insmod /home/iap_auth.ko
 /home/gethwplatform
 
 #now begin app
@@ -148,7 +132,7 @@ insmod /home/as-iosched.ko
 echo "anticipatory" > /sys/block/mmcblk0/queue/scheduler
 echo "1024" > /sys/block/mmcblk0/queue/read_ahead_kb
 
-### The followinf unmount+mount of hd1 allows a rw mount (on startup, it is ro mounted)
+### The following unmount+mount of hd1 allows a rw mount (on startup, it is ro mounted)
 
 umount /home/hd1
 umount /home/hd2
@@ -158,15 +142,12 @@ mkdir /home/hd1/record_sub
 mount -t vfat /dev/hd2 /home/hd2
 mkdir /home/hd2/record_sub
 rm /home/web/sd/* -rf
-
-
 cd /home/3518
 ./load3518_left -i
 
 ### Detect the hardware version
 # result will be written in /tmp/hwplatform
 /home/detect_ver
-
 
 himm 0x20050074 0x06802424
 
@@ -175,7 +156,6 @@ cd /home
 ./peripheral &
 ./dispatch &
 ./exnet &
-#./mysystem &
 
 count=5
 
@@ -190,15 +170,14 @@ else
 fi
 done
 
-
 ### INFORMATION : the 'clic' 'clic' is done before this line
 
 ### we copy our wpa_supplicant file in /home
 cp /home/hd1/test/wpa_supplicant.conf /home/wpa_supplicant.conf
 
-
 ### Init logs
 log_init
+
 # Put version informations in logs and a file which will be included in the http server default page
 TMP_VERSION_FILE=/tmp/version_information
 rm -f ${TMP_VERSION_FILE}
@@ -250,15 +229,14 @@ esac
 log "The RTSP server binary version which will be used is the '${RTSP_VERSION}'"
 log "The HTTP server binary version which will be used is the '${HTTP_VERSION}'"
 
-
-
 log "Check for some files size..."
 ls -l /home/hd1/test/rtspsvr* /home/hd1/test/http/server* | sed "s/^/    /" >> ${LOG_FILE}
 
 log "The blue led is currently blinking"
 log "Debug mode = $(get_config DEBUG)"
 
-# first, configure wifi
+
+# Configure wifi
 
 ### Let ppl hear that we start connect wifi
 /home/rmm "/home/hd1/voice/connectting.g726" 1
@@ -271,20 +249,23 @@ res=$(/home/wpa_supplicant -B -i ra0 -c /home/wpa_supplicant.conf )
 log "Status for wifi configuration=$?  (0 is ok)"
 log "Wifi configuration answer: $res"
 
-log "Do network configuration 1/2 (ip and gateway)"
-#ifconfig ra0 192.168.1.121 netmask 255.255.255.0
-#route add default gw 192.168.1.254
-ifconfig ra0 $(get_config IP) netmask $(get_config NETMASK)
-route add default gw $(get_config GATEWAY)
+log "Do network configuration (DHCP)"
+udhcpc -b -i ra0
 log "Done"
 
 log "Configuration is :"
 ifconfig | sed "s/^/    /" >> ${LOG_FILE}
 
-### configure DNS (google one)
-log "Do network configuration 2/2 (DNS)"
-echo "nameserver $(get_config NAMESERVER)" > /etc/resolv.conf
-log "Done"
+sleep 3
+
+### Check if reach gateway and notify
+ping -c1 -W2 $(ip route | awk '/^default/ { print $3 }') > /dev/null
+if [ 0 -eq $? ]; then
+    /home/rmm "/home/hd1/voice/wifi_connected.g726" 1
+fi
+
+log "Ping Google.com"
+ping -c1 google.com >> ${LOG_FILE}
 
 ### configure time on a NTP server
 log "Get time from a NTP server..."
@@ -297,11 +278,6 @@ log "Done"
 log "New datetime is $(date)"
 
 
-### Check if reach gateway and notify
-ping -c1 -W2 $(get_config GATEWAY) > /dev/null
-if [ 0 -eq $? ]; then
-    /home/rmm "/home/hd1/voice/wifi_connected.g726" 1
-fi
 
 ### set the root password
 root_pwd=$(get_config ROOT_PASSWORD)
@@ -310,7 +286,6 @@ root_pwd=$(get_config ROOT_PASSWORD)
 ### start blue led for configuration finished
 log "Start blue led on"
 led -yoff -bon
-
 
 ### Rename the timeout sound file to avoid being spammed with chinese audio stuff...
 [ -f /home/timeout.g726 ] && mv /home/timeout.g726 /home/timeout.g726.OFF
@@ -355,13 +330,10 @@ ps | grep server | grep -v grep | grep -v log_server >> ${LOG_FILE}
 
 sync
 
-
-
 ### Launch record event
 cd /home
 ./record_event &
 ./mp4record 60 &
-
 
 ### Some configuration
 
