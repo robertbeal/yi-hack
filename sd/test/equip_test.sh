@@ -249,9 +249,22 @@ res=$(/home/wpa_supplicant -B -i ra0 -c /home/wpa_supplicant.conf )
 log "Status for wifi configuration=$?  (0 is ok)"
 log "Wifi configuration answer: $res"
 
-log "Do network configuration (DHCP)"
-udhcpc -b -i ra0
-log "Done"
+if [[ $(get_config DHCP) == "yes" ]] ; then
+    log "Do network configuration (DHCP)"
+    udhcpc --background --interface=ra0
+    log "Done"
+else
+    log "Do network configuration 1/2 (IP and Gateway)"
+    #ifconfig ra0 192.168.1.121 netmask 255.255.255.0
+    #route add default gw 192.168.1.254
+    ifconfig ra0 $(get_config IP) netmask $(get_config NETMASK)
+    route add default gw $(get_config GATEWAY)
+    log "Done"
+    ### configure DNS (google one)
+    log "Do network configuration 2/2 (DNS)"
+    echo "nameserver $(get_config NAMESERVER)" > /etc/resolv.conf
+    log "Done"
+fi
 
 log "Configuration is :"
 ifconfig | sed "s/^/    /" >> ${LOG_FILE}
@@ -264,8 +277,9 @@ if [ 0 -eq $? ]; then
     /home/rmm "/home/hd1/test/voice/wifi_connected.g726" 1
 fi
 
+### Ping google to see if we have an internet connection
 log "Ping Google.com"
-ping -c1 google.com >> ${LOG_FILE}
+ping -c3 google.com >> ${LOG_FILE}
 
 ### configure time on a NTP server
 log "Get time from a NTP server..."
