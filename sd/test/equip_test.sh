@@ -383,7 +383,7 @@ fi
 ### Final led color
 
 ### Check if reach gateway and notify
-ping -c1 -W2 $(get_config GATEWAY) > /dev/null
+ping -c1 -W2 $(ip route | awk '/^default/ { print $3 }') > /dev/null
 if [ 0 -eq $? ]; then
     led $(get_config LED_WHEN_READY)
     /home/rmm "/home/hd1/test/voice/success.g726" 1
